@@ -9,9 +9,13 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(100) NOT NULL,
   photo         MEDIUMTEXT NULL,
   phone         VARCHAR(30) NULL,
+  student_id    CHAR(10) NULL,
+  course        VARCHAR(100) NULL,
   is_admin      TINYINT(1) NOT NULL DEFAULT 0,
   is_finance    TINYINT(1) NOT NULL DEFAULT 0,
-  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  is_security   TINYINT(1) NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_users_student_id (student_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS slots (
@@ -61,4 +65,22 @@ CREATE TABLE IF NOT EXISTS payments (
   CONSTRAINT fk_payment_reservation FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
   CONSTRAINT fk_payment_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_payment_processor FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+
+-- Short-lived, backend-authorized commands consumed by the single ESP32 cabinet controller.
+CREATE TABLE IF NOT EXISTS esp32_commands (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  reservation_id INT NOT NULL,
+  user_id        INT NOT NULL,
+  slot_no        TINYINT NOT NULL,
+  action         ENUM('Stored','Retrieved') NOT NULL,
+  status         ENUM('queued','claimed','completed','failed','expired') NOT NULL DEFAULT 'queued',
+  device_message VARCHAR(240) NULL,
+  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at     DATETIME NOT NULL,
+  claimed_at     DATETIME NULL,
+  completed_at   DATETIME NULL,
+  KEY ix_esp32_queue (status, expires_at, id),
+  KEY ix_esp32_reservation (reservation_id)
 ) ENGINE=InnoDB;
